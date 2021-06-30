@@ -242,8 +242,8 @@
       </div>
       <div class="col-auto mr-3">
         <div class="playerVolume">
-          <i class="fa fa-volume-up"></i>
-          <input type="range" value="100" />
+          <i class="fa fa-volume-up" onclick="handleMute()"></i>
+          <input type="range" min="0" max="100" value="100" />
         </div>
       </div>
     </div>
@@ -265,8 +265,8 @@
     const setPlayerSong = (song) => {
       localStorage.setItem("songId", song.id)
       setPlayerInfos(song)
-      playIcon.src = "./playerbuttons/Pause.png"
       audio.play()
+      playIcon.src = "./playerbuttons/Pause.png"
     }
 
     const setPlayerInfos = (song) => {
@@ -291,16 +291,31 @@
 
     }
 
-    const handleProgressBarUpdate = () => {
+    const handleProgressBarUpdate = (ended = false) => {
       const progressBar = document.querySelector(".progress-bar")
       progressBar.style.width = (audio.currentTime / audio.duration) * 100 + "%"
-
       const currTime = document.querySelector(".player .currentTime")
 
-      const minutes = "0" + Math.floor(audio.currentTime / 60)
-      const seconds = "0" + Math.floor(audio.currentTime)
+      if (ended) {
+        progressBar.style.width = "0%"
+        playIcon.src = "./playerbuttons/Play.png"
+        currTime.innerText = "00:00"
+      } else {
 
-      currTime.innerText = minutes.substr(-2) + ":" + seconds.substr(-2)
+        const minutes = "0" + Math.floor(audio.currentTime / 60)
+        const seconds = "0" + Math.floor(audio.currentTime)
+
+        currTime.innerText = minutes.substr(-2) + ":" + seconds.substr(-2)
+      }
+    }
+
+    const handleProgressBarClick = event => {
+
+      const elem = event.currentTarget.firstElementChild;
+      const percentage = (event.offsetX / event.currentTarget.clientWidth) * 100
+
+      elem.style.width = percentage + "%"
+      audio.currentTime = (percentage / 100) * audio.duration
     }
 
     const handlePlay = () => {
@@ -313,7 +328,47 @@
       }
     }
 
+    const handleChangeVolume = event => {
+      const volume = event.target.value / 100
+      localStorage.setItem("prevVolume", volume)
+      event.currentTarget.setAttribute("value", event.currentTarget.value)
+      audio.volume = volume
+    }
+
+    const handleMute = () => {
+      const volumeRange = document.querySelector(".playerVolume input[type=range]")
+      const prevVolume = localStorage.getItem("prevVolume")
+
+      if (audio.volume === 0) {
+        audio.volume = prevVolume ? prevVolume : 1;
+        volumeRange.setAttribute("value", prevVolume ? (prevVolume * 100) : 1)
+        volumeRange.value = prevVolume * 100
+      } else {
+        audio.volume = 0;
+        volumeRange.value = 0
+        volumeRange.setAttribute("value", 0)
+
+      }
+    }
+
     audio.ontimeupdate = () => handleProgressBarUpdate();
+    audio.onended = () => handleProgressBarUpdate(true);
+
+    window.addEventListener("DOMContentLoaded", () => {
+
+      const progressBar = document.querySelector(".progress")
+      progressBar.addEventListener("click", handleProgressBarClick)
+
+      const volumeRange = document.querySelector(".playerVolume input[type=range]")
+      volumeRange.addEventListener("input", handleChangeVolume)
+
+      const storageVolume = localStorage.getItem("prevVolume")
+
+      if (storageVolume) {
+        audio.volume = storageVolume
+        volumeRange.setAttribute("value", storageVolume * 100)
+      }
+    })
 
     let rockArtists = [
       "queen",
@@ -409,14 +464,14 @@
 
           if (firstLoad) {
             const storageSongId = localStorage.getItem("songId")
-            const prevSong = data.find(song => song.id === parseInt(storageSongId))
+            const prevSong = songsArr.find(song => song.id === parseInt(storageSongId))
 
             if (storageSongId && prevSong) {
               setPlayerInfos(prevSong)
             }
 
           } else {
-            setPlayerInfos(data[0])
+            setPlayerInfos(songsArr[0])
           }
         })
         .catch(err => {
